@@ -16,9 +16,12 @@ interface IBubbaFinanceFactory {
 
     // Constants getters
 
-    function getFeesCommunityAllocation() public view returns (uint8);
+    function getFeesCommunityAllocation() external view returns (uint8);
 
-    function getFeesDevfundAllocation() public view returns (uint8);
+    function getFeesDevfundAllocation() external view returns (uint8);
 
-    function getFeesLiquidityProvidersAllocation() public view returns (uint8);
+    function getFeesLiquidityProvidersAllocation()
+        external
+        view
+        returns (uint8);
 }

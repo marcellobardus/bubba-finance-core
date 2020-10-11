@@ -1,3 +1,5 @@
+pragma solidity ^0.6.2;
+
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 interface IBubbaMarketToken is IERC20 {

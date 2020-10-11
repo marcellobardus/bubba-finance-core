@@ -24,8 +24,6 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
 
     mapping(uint256 => Market) public markets;
 
-    
-
     constructor() public Ownable() {}
 
     function openMarket(
@@ -62,16 +60,25 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
         return marketsCounter.current();
     }
 
-    function getFeesCommunityAllocation() public view returns(uint8) {
+    function getFeesCommunityAllocation()
+        external
+        override
+        view
+        returns (uint8)
+    {
         return ALLOCATED_COMMUNITY_FEE_PERCENTAGE;
     }
 
-    function getFeesDevfundAllocation() public view returns(uint8) {
+    function getFeesDevfundAllocation() external override view returns (uint8) {
         return ALLOCATED_DEVFUND_FEE_PERCENTAGE;
     }
 
-    function getFeesLiquidityProvidersAllocation() public view returns(uint8) {
+    function getFeesLiquidityProvidersAllocation()
+        external
+        override
+        view
+        returns (uint8)
+    {
         return ALLOCATED_LIQUIDITY_PROVIDERS_FEE_PERCENTAGE;
     }
-}
 }

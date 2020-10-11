@@ -110,7 +110,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
             .mul(liquidityToken.balanceOf(_msgSender()));
 
         uint256 duedInterests = feesPoolSize
-            .div(iquidityToken.totalSupply())
+            .div(liquidityToken.totalSupply())
             .mul(liquidityToken.balanceOf(_msgSender()))
             .div(100)
             .mul(uint256(factory.getFeesLiquidityProvidersAllocation()));
@@ -192,5 +192,44 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         realizedOptionsValue.add(_value.sub(missingLiquidity));
 
         emit OptionExecuted(_msgSender(), _value.sub(missingLiquidity));
+    }
+
+    function closeMarket()
+        external
+        returns (
+            bool _success,
+            uint256 _communityWithdrawal,
+            uint256 _devFundWithdrawal
+        )
+    {
+        require(
+            block.timestamp >=
+                marketExpirationTimestamp.add(timeToOptionExectution),
+            "BubbaFinanceMarket: Options can still be realized"
+        );
+
+        require(
+            msg.sender == address(factory),
+            "BubbaFinanceMarket: Unauthorized"
+        );
+
+        _communityWithdrawal = feesPoolSize
+            .div(liquidityToken.totalSupply())
+            .mul(liquidityToken.balanceOf(_msgSender()))
+            .div(100)
+            .mul(uint256(factory.getFeesCommunityAllocation()));
+
+        _devFundWithdrawal = feesPoolSize
+            .div(liquidityToken.totalSupply())
+            .mul(liquidityToken.balanceOf(_msgSender()))
+            .div(100)
+            .mul(uint256(factory.getFeesDevfundAllocation()));
+
+        _success = token0.transfer(
+            msg.sender,
+            _communityWithdrawal.add(_devFundWithdrawal)
+        );
+
+        emit MarketClosed(_communityWithdrawal, _devFundWithdrawal);
     }
 }

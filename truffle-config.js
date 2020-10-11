@@ -86,7 +86,7 @@ module.exports = {
       docker: true,
       settings: {
         optimizer: {
-          enabled: false,
+          enabled: true,
           runs: 200,
         },
         evmVersion: "byzantium",
