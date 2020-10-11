@@ -1,0 +1,11 @@
+{
+  "name": "@bubba-finance/core",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Marcello Bardus",
+  "license": "MIT",
+  "dependencies": {
+    "@uniswap/v2-core": "https://github.com/Uniswap/uniswap-v2-core.git",
+    "openzeppelin-solidity": "^3.2.0"
+  }
+}
