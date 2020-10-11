@@ -6,8 +6,8 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 library UniswapPriceOracle {
     using SafeMath for uint256;
 
-    function getPrice(IUniswapV2Pair pair) public view returns (uint256) {
-        (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast) = pair
+    function getPrice(address pair) public view returns (uint256) {
+        (uint112 reserve0, uint112 reserve1, uint32 _) = IUniswapV2Pair(pair)
             .getReserves();
         return uint256(reserve0).div(uint256(reserve1));
     }

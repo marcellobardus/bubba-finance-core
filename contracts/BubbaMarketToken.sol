@@ -12,11 +12,19 @@ contract BubbaMarketToken is IBubbaMarketToken, Ownable, ERC20 {
         ERC20(_name, _symbol)
     {}
 
-    function mint(address _beneficiary, uint256 _amount) external onlyOwner {
+    function mint(address _beneficiary, uint256 _amount)
+        external
+        override
+        onlyOwner
+    {
         _mint(_beneficiary, _amount);
     }
 
-    function burn(address _account, uint256 _amount) external onlyOwner {
+    function burn(address _account, uint256 _amount)
+        external
+        override
+        onlyOwner
+    {
         _burn(_account, _amount);
     }
 }

@@ -5,33 +5,29 @@ import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 import "./interfaces/IBubbaFinanceMarket.sol";
+import "./interfaces/IBubbaFinanceFactory.sol";
 
 import "./BubbaMarketToken.sol";
-
-/**
-TODO 
-1. Disable liquidity withdrawals before market expiration.
-2. Instead of saving data regarding liquidity and option size, mint tokens.
- */
 
 contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
     using SafeMath for uint256;
 
-    IERC20 public token0;
-    IERC20 public token1;
+    IERC20 private token0;
+    IERC20 private token1;
+
+    BubbaMarketToken private liquidityToken;
+    BubbaMarketToken private optionToken;
+
+    IBubbaFinanceFactory private factory;
 
     uint256 marketExpirationTimestamp;
+    uint256 timeToOptionExectution;
 
-    mapping(address => uint256) public providedLiquidity;
     uint256 public liquidityPoolSize;
-
-    uint256 public penaltiesPoolSize;
 
     uint256 public feesPoolSize;
 
     uint256 public realizedOptionsValue;
-
-    mapping(address => uint256) purchasedOptionValue;
 
     uint256 openingToken1Price;
 
@@ -42,26 +38,29 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         address _token0,
         address _token1,
         uint256 _expirationTimestamp,
+        uint256 _timeToOptionExecution,
         uint256 _openingToken1Price,
         uint8 _optionFee,
-        string memory _optionTokenName,
-        string memory _optionTokenSymbol,
-        string memory _liquidityTokenName,
-        string memory _liquidityTokenSymbol
+        string memory _marketName,
+        string memory _marketSymbol
     ) public {
         token0 = IERC20(_token0);
         token1 = IERC20(_token1);
         marketExpirationTimestamp = _expirationTimestamp;
+        timeToOptionExectution = _timeToOptionExecution;
         optionFee = _optionFee;
         openingToken1Price = _openingToken1Price;
 
-        BubbaMarketToken optionToken = new BubbaMarketToken(
-            _optionTokenName,
-            _optionTokenSymbol
+        factory = IBubbaFinanceFactory(msg.sender);
+
+        optionToken = new BubbaMarketToken(
+            string(abi.encodePacked("Option ", _marketName)),
+            string(abi.encodePacked("OPT:", _marketSymbol))
         );
-        BubbaMarketToken liquidityToken = new BubbaMarketToken(
-            _liquidityTokenName,
-            _liquidityTokenSymbol
+
+        liquidityToken = new BubbaMarketToken(
+            string(abi.encodePacked("Liquidity ", _marketName)),
+            string(abi.encodePacked("LIQ:", _marketSymbol))
         );
     }
 
@@ -76,35 +75,61 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        providedLiquidity[_msgSender()].add(_amount);
+        liquidityToken.mint(_msgSender(), _amount);
 
         liquidityPoolSize.add(_amount);
 
         emit LiquidityAdded(_msgSender(), _amount);
     }
 
-    function withdrawLiquidity(uint256 _amount) external {
+    function claimInterests(uint256 _value) external {
         require(
-            providedLiquidity[_msgSender()] >= _amount,
-            "BubbaFinanceMarket: Insufficient liquidity provided"
+            block.timestamp >=
+                marketExpirationTimestamp.add(timeToOptionExectution),
+            "BubbaFinanceMarket: Options can still be realized"
         );
 
-        uint256 penalty;
+        require(
+            liquidityToken.balanceOf(_msgSender()) >= _value,
+            "BubbaFinanceMarket: Insufficient balance"
+        );
 
-        if (block.timestamp < marketExpirationTimestamp) {
-            penalty.add(_amount.div(1000).mul(optionFee));
-        }
+        uint256 duedUnsoldLiquidityAsset = token1
+            .balanceOf(address(this))
+            .div(liquidityToken.totalSupply())
+            .mul(liquidityToken.balanceOf(_msgSender()));
 
         require(
-            token1.transfer(_msgSender(), _amount.sub(penalty)),
+            token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        providedLiquidity[_msgSender()].sub(_amount);
-        liquidityPoolSize.sub(_amount);
-        penaltiesPoolSize.add(penalty);
+        uint256 duedOptionBackAsset = token0
+            .balanceOf(address(this))
+            .div(liquidityToken.totalSupply())
+            .mul(liquidityToken.balanceOf(_msgSender()));
 
-        emit LiquidityWithdrawn(_msgSender(), _amount, penalty);
+        uint256 duedInterests = feesPoolSize
+            .div(iquidityToken.totalSupply())
+            .mul(liquidityToken.balanceOf(_msgSender()))
+            .div(100)
+            .mul(uint256(factory.getFeesLiquidityProvidersAllocation()));
+
+        require(
+            token0.transfer(
+                _msgSender(),
+                duedOptionBackAsset.add(feesPoolSize)
+            ),
+            "BubbaFinanceMarket: Transfer failed"
+        );
+
+        liquidityToken.burn(_msgSender(), _value);
+
+        emit InterestsClaimed(
+            _msgSender(),
+            duedUnsoldLiquidityAsset,
+            duedOptionBackAsset.add(duedInterests)
+        );
     }
 
     function purchaseOption(uint256 _value) external {
@@ -121,7 +146,8 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
 
         feesPoolSize.add(fee);
-        purchasedOptionValue[_msgSender()].add(_value);
+
+        optionToken.mint(_msgSender(), _value);
 
         emit OptionPurchase(_msgSender(), _value, fee);
     }
@@ -133,7 +159,13 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
 
         require(
-            purchasedOptionValue[_msgSender()] >= _value,
+            block.timestamp <=
+                marketExpirationTimestamp.add(timeToOptionExectution),
+            "BubbaFinanceMarket: Execution time expired"
+        );
+
+        require(
+            optionToken.balanceOf(_msgSender()) >= _value,
             "BubbaFinanceMarket: Unsufficient option size"
         );
 
@@ -154,6 +186,8 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
             token1.transfer(_msgSender(), _value.sub(missingLiquidity)),
             "BubbaFinanceMarket: Transfer failed"
         );
+
+        optionToken.burn(_msgSender(), _value.sub(missingLiquidity));
 
         realizedOptionsValue.add(_value.sub(missingLiquidity));
 

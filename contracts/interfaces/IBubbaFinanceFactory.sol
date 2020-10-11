@@ -12,7 +12,13 @@ interface IBubbaFinanceFactory {
         uint256 expirationTimestamp;
     }
 
-    // Constants
-
     function getMarketsCount() external view returns (uint256);
+
+    // Constants getters
+
+    function getFeesCommunityAllocation() public view returns (uint8);
+
+    function getFeesDevfundAllocation() public view returns (uint8);
+
+    function getFeesLiquidityProvidersAllocation() public view returns (uint8);
 }
