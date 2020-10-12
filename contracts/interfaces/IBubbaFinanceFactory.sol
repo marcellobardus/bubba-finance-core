@@ -4,8 +4,11 @@ interface IBubbaFinanceFactory {
     event MarketCreation(
         address indexed token0,
         address indexed token1,
-        address market
+        address market,
+        uint256 marketId
     );
+
+    event MarketClosed(uint256 marketId);
 
     struct Market {
         address market;

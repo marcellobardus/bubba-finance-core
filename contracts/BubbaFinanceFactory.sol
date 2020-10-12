@@ -6,6 +6,7 @@ import "openzeppelin-solidity/contracts/access/Ownable.sol";
 
 import "./BubbaFinanceMarket.sol";
 
+import "./interfaces/IBubbaFinanceMarket.sol";
 import "./interfaces/IBubbaFinanceFactory.sol";
 
 import "./utils/UniswapPriceOracle.sol";
@@ -24,6 +25,9 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
 
     mapping(uint256 => Market) public markets;
 
+    mapping(address => uint256) devFunds;
+    mapping(address => uint256) communityFunds;
+
     constructor() public Ownable() {}
 
     function openMarket(
@@ -35,7 +39,7 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
         address _uniswapMarket,
         string calldata _marketName,
         string calldata _marketSymbol
-    ) external onlyOwner {
+    ) external onlyOwner returns (uint256 _marketId) {
         uint256 token1Price = UniswapPriceOracle.getPrice(_uniswapMarket);
         BubbaFinanceMarket _market = new BubbaFinanceMarket(
             _token0,
@@ -47,11 +51,42 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
             _marketName,
             _marketSymbol
         );
-        markets[marketsCounter.current()] = Market(
-            address(_market),
-            _expirationTimestamp
+
+        _marketId = marketsCounter.current();
+
+        markets[_marketId] = Market(address(_market), _expirationTimestamp);
+
+        emit MarketCreation(_token0, _token1, address(_market), _marketId);
+        marketsCounter.increment();
+    }
+
+    function closeMarket(uint256 _marketId)
+        external
+        onlyOwner
+        returns (
+            bool _success,
+            uint256 _communityWithdrawal,
+            uint256 _devFundWithdrawal
+        )
+    {
+        require(
+            markets[_marketId].market != address(0),
+            "BubbaFinanceFactory: Non existing market"
         );
-        emit MarketCreation(_token0, _token1, address(_market));
+
+        (
+            _success,
+            _communityWithdrawal,
+            _devFundWithdrawal
+        ) = IBubbaFinanceMarket(markets[_marketId]).closeMarket();
+
+        address marketToken0 = IBubbaFinanceMarket(markets[_marketId])
+            .getToken0Address();
+
+        devFunds[marketToken0].add(_devFundWithdrawal);
+        communityFunds[marketToken0].add(_communityWithdrawal);
+
+        emit MarketClosed(_marketId);
     }
 
     // Getters

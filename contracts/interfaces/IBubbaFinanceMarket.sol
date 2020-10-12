@@ -18,4 +18,28 @@ interface IBubbaFinanceMarket {
         uint256 size;
         uint256 fee;
     }
+
+    // State changers
+
+    function addLiquidity(uint256 _amount) external;
+
+    function claimInterests(uint256 _value) external;
+
+    function purchaseOption(uint256 _value) external;
+
+    function realizeOption(uint256 _value) external;
+
+    function closeMarket()
+        external
+        returns (
+            bool _success,
+            uint256 _communityWithdrawal,
+            uint256 _devFundWithdrawal
+        );
+
+    // Getters
+
+    function getToken0Address() external view returns (address _token0);
+
+    function getToken1Address() external view returns (address _token1);
 }

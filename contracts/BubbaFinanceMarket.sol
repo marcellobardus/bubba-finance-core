@@ -97,7 +97,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         uint256 duedUnsoldLiquidityAsset = token1
             .balanceOf(address(this))
             .div(liquidityToken.totalSupply())
-            .mul(liquidityToken.balanceOf(_msgSender()));
+            .mul(_value);
 
         require(
             token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
@@ -107,18 +107,18 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         uint256 duedOptionBackAsset = token0
             .balanceOf(address(this))
             .div(liquidityToken.totalSupply())
-            .mul(liquidityToken.balanceOf(_msgSender()));
+            .mul(_value);
 
         uint256 duedInterests = feesPoolSize
             .div(liquidityToken.totalSupply())
-            .mul(liquidityToken.balanceOf(_msgSender()))
+            .mul(_value)
             .div(100)
             .mul(uint256(factory.getFeesLiquidityProvidersAllocation()));
 
         require(
             token0.transfer(
                 _msgSender(),
-                duedOptionBackAsset.add(feesPoolSize)
+                duedOptionBackAsset.add(duedInterests)
             ),
             "BubbaFinanceMarket: Transfer failed"
         );
@@ -231,5 +231,15 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
 
         emit MarketClosed(_communityWithdrawal, _devFundWithdrawal);
+    }
+
+    // Getters
+
+    function getToken0Address() external view returns (address _token0) {
+        _token0 = address(token0);
+    }
+
+    function getToken1Address() external view returns (address _token1) {
+        _token1 = address(token1);
     }
 }
