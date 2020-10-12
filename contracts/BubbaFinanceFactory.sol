@@ -78,9 +78,9 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
             _success,
             _communityWithdrawal,
             _devFundWithdrawal
-        ) = IBubbaFinanceMarket(markets[_marketId]).closeMarket();
+        ) = IBubbaFinanceMarket(markets[_marketId].market).closeMarket();
 
-        address marketToken0 = IBubbaFinanceMarket(markets[_marketId])
+        address marketToken0 = IBubbaFinanceMarket(markets[_marketId].market)
             .getToken0Address();
 
         devFunds[marketToken0].add(_devFundWithdrawal);

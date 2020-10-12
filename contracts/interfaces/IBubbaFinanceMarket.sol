@@ -42,4 +42,11 @@ interface IBubbaFinanceMarket {
     function getToken0Address() external view returns (address _token0);
 
     function getToken1Address() external view returns (address _token1);
+
+    function getLiquidityToken()
+        external
+        view
+        returns (address _liquidityToken);
+
+    function getOptionToken() external view returns (address _optionToken);
 }

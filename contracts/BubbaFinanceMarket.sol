@@ -64,7 +64,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
     }
 
-    function addLiquidity(uint256 _amount) external {
+    function addLiquidity(uint256 _amount) external override {
         require(
             block.timestamp <= marketExpirationTimestamp,
             "BubbaFinanceMarket: Market expired"
@@ -82,7 +82,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         emit LiquidityAdded(_msgSender(), _amount);
     }
 
-    function claimInterests(uint256 _value) external {
+    function claimInterests(uint256 _value) external override {
         require(
             block.timestamp >=
                 marketExpirationTimestamp.add(timeToOptionExectution),
@@ -132,7 +132,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
     }
 
-    function purchaseOption(uint256 _value) external {
+    function purchaseOption(uint256 _value) external override {
         require(
             block.timestamp <= marketExpirationTimestamp,
             "BubbaFinanceMarket: Option purchase unavailable"
@@ -152,7 +152,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         emit OptionPurchase(_msgSender(), _value, fee);
     }
 
-    function realizeOption(uint256 _value) external {
+    function realizeOption(uint256 _value) external override {
         require(
             block.timestamp >= marketExpirationTimestamp,
             "BubbaFinanceMarket: Market still open"
@@ -196,6 +196,7 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
 
     function closeMarket()
         external
+        override
         returns (
             bool _success,
             uint256 _communityWithdrawal,
@@ -235,11 +236,39 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
 
     // Getters
 
-    function getToken0Address() external view returns (address _token0) {
+    function getToken0Address()
+        external
+        override
+        view
+        returns (address _token0)
+    {
         _token0 = address(token0);
     }
 
-    function getToken1Address() external view returns (address _token1) {
+    function getToken1Address()
+        external
+        override
+        view
+        returns (address _token1)
+    {
         _token1 = address(token1);
+    }
+
+    function getOptionToken()
+        external
+        override
+        view
+        returns (address _optionToken)
+    {
+        _optionToken = address(optionToken);
+    }
+
+    function getLiquidityToken()
+        external
+        override
+        view
+        returns (address _liquidityToken)
+    {
+        _liquidityToken = address(liquidityToken);
     }
 }
