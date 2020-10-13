@@ -20,13 +20,14 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
 
     IBubbaFinanceFactory private factory;
 
-    uint256 marketExpirationTimestamp;
-    uint256 timeToOptionExectution;
+    uint256 public marketExpirationTimestamp;
+    uint256 public timeToOptionExectution;
 
     uint256 public liquidityPoolSize;
 
     uint256 public feesPoolSize;
 
+    uint256 public purchasedOptionsValue;
     uint256 public realizedOptionsValue;
 
     uint256 openingToken1Price;
@@ -80,6 +81,28 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         liquidityPoolSize.add(_amount);
 
         emit LiquidityAdded(_msgSender(), _amount);
+    }
+
+    function withdrawLiquidity(uint256 _amount) external override {
+        require(
+            purchasedOptionsValue == 0,
+            "BubbaFinanceMarket: Market already started"
+        );
+
+        require(
+            liquidityToken.balanceOf(_msgSender()) >= _value,
+            "BubbaFinanceMarket: Insufficient balance"
+        );
+
+        uint256 duedUnsoldLiquidityAsset = token1
+            .balanceOf(address(this))
+            .div(liquidityToken.totalSupply())
+            .mul(_value);
+
+        require(
+            token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
+            "BubbaFinanceMarket: Transfer failed"
+        );
     }
 
     function claimInterests(uint256 _value) external override {
@@ -138,6 +161,11 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
             "BubbaFinanceMarket: Option purchase unavailable"
         );
 
+        require(
+            liquidityPoolSize.sub(purchasedOptionsValue) >= _value,
+            "BubbaFinanceMarket: Not enought liquidity"
+        );
+
         uint256 fee = _value.div(1000).mul(optionFee).mul(openingToken1Price);
 
         require(
@@ -148,6 +176,8 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         feesPoolSize.add(fee);
 
         optionToken.mint(_msgSender(), _value);
+
+        purchasedOptionsValue.add(_value);
 
         emit OptionPurchase(_msgSender(), _value, fee);
     }

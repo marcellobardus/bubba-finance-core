@@ -23,6 +23,8 @@ interface IBubbaFinanceMarket {
 
     function addLiquidity(uint256 _amount) external;
 
+    function withdrawLiquidity(uint256 _amount) external;
+
     function claimInterests(uint256 _value) external;
 
     function purchaseOption(uint256 _value) external;
