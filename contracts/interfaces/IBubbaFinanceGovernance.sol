@@ -5,6 +5,12 @@ interface IBubbaFinanceGovernance {
     event ProposalExecution(uint256 proposalId);
     event ProposalExecutionFailed(uint256 proposalId);
 
+    event Vote(
+        uint256 indexed proposalId,
+        address indexed voter,
+        uint256 votes
+    );
+
     struct Transaction {
         address destination;
         uint256 value;

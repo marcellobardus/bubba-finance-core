@@ -11,6 +11,7 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
     using Counters for Counters.Counter;
 
     uint8 constant REQUIRED_SUPPLY_PERCENTAGE_TO_PROPOSE = 10;
+    uint8 constant REQUIRED_MAJORITY = 51;
 
     uint256 activeVotedProposal;
 
@@ -46,7 +47,39 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
         proposalsCounter.increment();
     }
 
+    function vote(uint256 _votes) external {
+        (bool votingSuccess, bool execution) = _vote(_msgSender(), _votes);
+        require(votingSuccess, "BubbaFinanceGovernance: voting failed");
+    }
+
     // Internals
+
+    function _vote(address _voter, uint256 _votes)
+        internal
+        returns (bool, bool)
+    {
+        if (
+            balanceOf(_voter).sub(
+                proposals[activeVotedProposal].lockedVoters[_voter]
+            ) < _votes
+        ) return (false, false);
+
+        proposals[activeVotedProposal].lockedVoters[_voter].add(_votes);
+
+        proposals[activeVotedProposal].votes.add(_votes);
+
+        emit Vote(activeVotedProposal, _voter, _votes);
+
+        if (
+            proposals[activeVotedProposal].votes >=
+            totalSupply().div(100).mul(REQUIRED_MAJORITY)
+        ) {
+            bool executionResult = executeProposal(activeVotedProposal);
+            return (true, executionResult);
+        }
+
+        return (true, false);
+    }
 
     function _beforeTokenTransfer(
         address from,
@@ -60,7 +93,7 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
         );
     }
 
-    function executeProposal(uint256 proposalId) internal {
+    function executeProposal(uint256 proposalId) internal returns (bool) {
         Transaction storage txn = proposals[proposalId].txn;
         txn.executed = true;
         if (
@@ -70,6 +103,8 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
             emit ProposalExecutionFailed(proposalId);
             txn.executed = false;
         }
+
+        return txn.executed;
     }
 
     function external_call(
