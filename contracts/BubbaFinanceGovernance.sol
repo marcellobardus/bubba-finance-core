@@ -15,7 +15,7 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
     uint256 activeVotedProposal;
 
     Counters.Counter private proposalsCounter;
-    mapping(uint256 => Proposal) public proposals;
+    mapping(uint256 => Proposal) proposals;
 
     constructor(string memory _name, string memory _symbol)
         public
@@ -35,11 +35,12 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
             "BubbaFinanceGovernance: Insufficient governance tokens in order to create proposals"
         );
 
-        proposals[proposalsCounter.current()] = Proposal({
-            proposedBy: _msgSender(),
-            votes: 0,
-            txn: Transaction(_txDestination, _txValue, _txData, false)
-        });
+        Proposal memory proposal;
+
+        proposal.proposedBy = _msgSender();
+        proposal.txn = Transaction(_txDestination, _txValue, _txData, false);
+
+        proposals[proposalsCounter.current()] = proposal;
 
         emit NewProposal(proposalsCounter.current());
         proposalsCounter.increment();
@@ -66,7 +67,7 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
             external_call(txn.destination, txn.value, txn.data.length, txn.data)
         ) emit ProposalExecution(proposalId);
         else {
-            emit ProposalExecutionFailed(transactionId);
+            emit ProposalExecutionFailed(proposalId);
             txn.executed = false;
         }
     }
@@ -81,7 +82,7 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
         assembly {
             let x := mload(0x40)
             let d := add(data, 32)
-            let g := sub(gas, 34710)
+            let g := sub(gas(), 34710)
             result := call(g, destination, value, d, dataLength, x, 0)
         }
         return result;

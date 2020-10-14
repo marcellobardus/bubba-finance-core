@@ -65,25 +65,25 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
     }
 
-    function addLiquidity(uint256 _amount) external override {
+    function addLiquidity(uint256 _value) external override {
         require(
             block.timestamp <= marketExpirationTimestamp,
             "BubbaFinanceMarket: Market expired"
         );
 
         require(
-            token1.transferFrom(_msgSender(), address(this), _amount),
+            token1.transferFrom(_msgSender(), address(this), _value),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        liquidityToken.mint(_msgSender(), _amount);
+        liquidityToken.mint(_msgSender(), _value);
 
-        liquidityPoolSize.add(_amount);
+        liquidityPoolSize.add(_value);
 
-        emit LiquidityAdded(_msgSender(), _amount);
+        emit LiquidityAdded(_msgSender(), _value);
     }
 
-    function withdrawLiquidity(uint256 _amount) external override {
+    function withdrawLiquidity(uint256 _value) external override {
         require(
             purchasedOptionsValue == 0,
             "BubbaFinanceMarket: Market already started"
