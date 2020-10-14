@@ -12,141 +12,141 @@ import "./BubbaMarketToken.sol";
 contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
     using SafeMath for uint256;
 
-    IERC20 private token0;
-    IERC20 private token1;
+    IERC20 private _token0;
+    IERC20 private _token1;
 
-    BubbaMarketToken private liquidityToken;
-    BubbaMarketToken private optionToken;
+    BubbaMarketToken private _liquidityToken;
+    BubbaMarketToken private _optionToken;
 
-    IBubbaFinanceFactory private factory;
+    IBubbaFinanceFactory private _factory;
 
-    uint256 public marketExpirationTimestamp;
-    uint256 public timeToOptionExectution;
+    uint256 public _marketExpirationTimestamp;
+    uint256 public _timeToOptionExectution;
 
-    uint256 public liquidityPoolSize;
+    uint256 public _liquidityPoolSize;
 
-    uint256 public feesPoolSize;
+    uint256 public _feesPoolSize;
 
-    uint256 public purchasedOptionsValue;
-    uint256 public realizedOptionsValue;
+    uint256 public _purchasedOptionsValue;
+    uint256 public _realizedOptionsValue;
 
-    uint256 openingToken1Price;
+    uint256 _openingToken1Price;
 
     // Defined as promil
-    uint8 optionFee;
+    uint8 _optionFee;
 
     constructor(
-        address _token0,
-        address _token1,
-        uint256 _expirationTimestamp,
-        uint256 _timeToOptionExecution,
-        uint256 _openingToken1Price,
-        uint8 _optionFee,
-        string memory _marketName,
-        string memory _marketSymbol
+        address token0,
+        address token1,
+        uint256 expirationTimestamp,
+        uint256 timeToOptionExecution,
+        uint256 openingToken1Price,
+        uint8 optionFee,
+        string memory marketName,
+        string memory marketSymbol
     ) public {
-        token0 = IERC20(_token0);
-        token1 = IERC20(_token1);
-        marketExpirationTimestamp = _expirationTimestamp;
-        timeToOptionExectution = _timeToOptionExecution;
-        optionFee = _optionFee;
-        openingToken1Price = _openingToken1Price;
+        _token0 = IERC20(token0);
+        _token1 = IERC20(token1);
+        _marketExpirationTimestamp = expirationTimestamp;
+        _timeToOptionExectution = timeToOptionExecution;
+        _optionFee = optionFee;
+        _openingToken1Price = openingToken1Price;
 
-        factory = IBubbaFinanceFactory(msg.sender);
+        _factory = IBubbaFinanceFactory(msg.sender);
 
-        optionToken = new BubbaMarketToken(
-            string(abi.encodePacked("Option ", _marketName)),
-            string(abi.encodePacked("OPT:", _marketSymbol))
+        _optionToken = new BubbaMarketToken(
+            string(abi.encodePacked("Option ", marketName)),
+            string(abi.encodePacked("OPT:", marketSymbol))
         );
 
-        liquidityToken = new BubbaMarketToken(
-            string(abi.encodePacked("Liquidity ", _marketName)),
-            string(abi.encodePacked("LIQ:", _marketSymbol))
+        _liquidityToken = new BubbaMarketToken(
+            string(abi.encodePacked("Liquidity ", marketName)),
+            string(abi.encodePacked("LIQ:", marketSymbol))
         );
     }
 
-    function addLiquidity(uint256 _value) external override {
+    function addLiquidity(uint256 value) external override {
         require(
-            block.timestamp <= marketExpirationTimestamp,
+            block.timestamp <= _marketExpirationTimestamp,
             "BubbaFinanceMarket: Market expired"
         );
 
         require(
-            token1.transferFrom(_msgSender(), address(this), _value),
+            _token1.transferFrom(_msgSender(), address(this), value),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        liquidityToken.mint(_msgSender(), _value);
+        _liquidityToken.mint(_msgSender(), value);
 
-        liquidityPoolSize.add(_value);
+        _liquidityPoolSize.add(value);
 
-        emit LiquidityAdded(_msgSender(), _value);
+        emit LiquidityAdded(_msgSender(), value);
     }
 
-    function withdrawLiquidity(uint256 _value) external override {
+    function withdrawLiquidity(uint256 value) external override {
         require(
-            purchasedOptionsValue == 0,
+            _purchasedOptionsValue == 0,
             "BubbaFinanceMarket: Market already started"
         );
 
         require(
-            liquidityToken.balanceOf(_msgSender()) >= _value,
+            _liquidityToken.balanceOf(_msgSender()) >= value,
             "BubbaFinanceMarket: Insufficient balance"
         );
 
-        uint256 duedUnsoldLiquidityAsset = token1
+        uint256 duedUnsoldLiquidityAsset = _token1
             .balanceOf(address(this))
-            .div(liquidityToken.totalSupply())
-            .mul(_value);
+            .div(_liquidityToken.totalSupply())
+            .mul(value);
 
         require(
-            token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
+            _token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
             "BubbaFinanceMarket: Transfer failed"
         );
     }
 
-    function claimInterests(uint256 _value) external override {
+    function claimInterests(uint256 value) external override {
         require(
             block.timestamp >=
-                marketExpirationTimestamp.add(timeToOptionExectution),
+                _marketExpirationTimestamp.add(_timeToOptionExectution),
             "BubbaFinanceMarket: Options can still be realized"
         );
 
         require(
-            liquidityToken.balanceOf(_msgSender()) >= _value,
+            _liquidityToken.balanceOf(_msgSender()) >= value,
             "BubbaFinanceMarket: Insufficient balance"
         );
 
-        uint256 duedUnsoldLiquidityAsset = token1
+        uint256 duedUnsoldLiquidityAsset = _token1
             .balanceOf(address(this))
-            .div(liquidityToken.totalSupply())
-            .mul(_value);
+            .div(_liquidityToken.totalSupply())
+            .mul(value);
 
         require(
-            token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
+            _token1.transfer(_msgSender(), duedUnsoldLiquidityAsset),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        uint256 duedOptionBackAsset = token0
+        uint256 duedOptionBackAsset = _token0
             .balanceOf(address(this))
-            .div(liquidityToken.totalSupply())
-            .mul(_value);
+            .div(_liquidityToken.totalSupply())
+            .mul(value);
 
-        uint256 duedInterests = feesPoolSize
-            .div(liquidityToken.totalSupply())
-            .mul(_value)
+        uint256 duedInterests = _feesPoolSize
+            .div(_liquidityToken.totalSupply())
+            .mul(value)
             .div(100)
-            .mul(uint256(factory.getFeesLiquidityProvidersAllocation()));
+            .mul(uint256(_factory.getFeesLiquidityProvidersAllocation()));
 
         require(
-            token0.transfer(
+            _token0.transfer(
                 _msgSender(),
                 duedOptionBackAsset.add(duedInterests)
             ),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        liquidityToken.burn(_msgSender(), _value);
+        _liquidityToken.burn(_msgSender(), value);
 
         emit InterestsClaimed(
             _msgSender(),
@@ -155,150 +155,162 @@ contract BubbaFinanceMarket is IBubbaFinanceMarket, Context {
         );
     }
 
-    function purchaseOption(uint256 _value) external override {
+    function purchaseOption(uint256 value) external override {
         require(
-            block.timestamp <= marketExpirationTimestamp,
+            block.timestamp <= _marketExpirationTimestamp,
             "BubbaFinanceMarket: Option purchase unavailable"
         );
 
         require(
-            liquidityPoolSize.sub(purchasedOptionsValue) >= _value,
+            _liquidityPoolSize.sub(_purchasedOptionsValue) >= value,
             "BubbaFinanceMarket: Not enought liquidity"
         );
 
-        uint256 fee = _value.div(1000).mul(optionFee).mul(openingToken1Price);
+        uint256 fee = value.div(1000).mul(_optionFee).mul(_openingToken1Price);
 
         require(
-            token0.transferFrom(_msgSender(), address(this), fee),
+            _token0.transferFrom(_msgSender(), address(this), fee),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        feesPoolSize.add(fee);
+        _feesPoolSize.add(fee);
 
-        optionToken.mint(_msgSender(), _value);
+        _optionToken.mint(_msgSender(), value);
 
-        purchasedOptionsValue.add(_value);
+        _purchasedOptionsValue.add(value);
 
-        emit OptionPurchase(_msgSender(), _value, fee);
+        emit OptionPurchase(_msgSender(), value, fee);
     }
 
-    function realizeOption(uint256 _value) external override {
+    function realizeOption(uint256 value) external override {
         require(
-            block.timestamp >= marketExpirationTimestamp,
+            block.timestamp >= _marketExpirationTimestamp,
             "BubbaFinanceMarket: Market still open"
         );
 
         require(
             block.timestamp <=
-                marketExpirationTimestamp.add(timeToOptionExectution),
+                _marketExpirationTimestamp.add(_timeToOptionExectution),
             "BubbaFinanceMarket: Execution time expired"
         );
 
         require(
-            optionToken.balanceOf(_msgSender()) >= _value,
+            _optionToken.balanceOf(_msgSender()) >= value,
             "BubbaFinanceMarket: Unsufficient option size"
         );
 
-        uint256 missingLiquidity = (liquidityPoolSize > _value)
+        uint256 missingLiquidity = (_liquidityPoolSize > value)
             ? 0
-            : _value.sub(liquidityPoolSize);
+            : value.sub(_liquidityPoolSize);
 
-        uint256 optionAssetsValue = (_value.sub(missingLiquidity)).mul(
-            openingToken1Price
+        uint256 optionAssetsValue = (value.sub(missingLiquidity)).mul(
+            _openingToken1Price
         );
 
         require(
-            token0.transferFrom(_msgSender(), address(this), optionAssetsValue),
+            _token0.transferFrom(
+                _msgSender(),
+                address(this),
+                optionAssetsValue
+            ),
             "BubbaFinanceMarket: Transfer failed"
         );
 
         require(
-            token1.transfer(_msgSender(), _value.sub(missingLiquidity)),
+            _token1.transfer(_msgSender(), value.sub(missingLiquidity)),
             "BubbaFinanceMarket: Transfer failed"
         );
 
-        optionToken.burn(_msgSender(), _value.sub(missingLiquidity));
+        _optionToken.burn(_msgSender(), value.sub(missingLiquidity));
 
-        realizedOptionsValue.add(_value.sub(missingLiquidity));
+        _realizedOptionsValue.add(value.sub(missingLiquidity));
 
-        emit OptionExecuted(_msgSender(), _value.sub(missingLiquidity));
+        emit OptionExecuted(_msgSender(), value.sub(missingLiquidity));
     }
 
     function closeMarket()
         external
         override
         returns (
-            bool _success,
-            uint256 _communityWithdrawal,
-            uint256 _devFundWithdrawal
+            bool,
+            uint256,
+            uint256
         )
     {
         require(
             block.timestamp >=
-                marketExpirationTimestamp.add(timeToOptionExectution),
+                _marketExpirationTimestamp.add(_timeToOptionExectution),
             "BubbaFinanceMarket: Options can still be realized"
         );
 
         require(
-            msg.sender == address(factory),
+            msg.sender == address(_factory),
             "BubbaFinanceMarket: Unauthorized"
         );
 
-        _communityWithdrawal = feesPoolSize
-            .div(liquidityToken.totalSupply())
-            .mul(liquidityToken.balanceOf(_msgSender()))
+        uint256 communityWithdrawal = _feesPoolSize
+            .div(_liquidityToken.totalSupply())
+            .mul(_liquidityToken.balanceOf(_msgSender()))
             .div(100)
-            .mul(uint256(factory.getFeesCommunityAllocation()));
+            .mul(uint256(_factory.getFeesCommunityAllocation()));
 
-        _devFundWithdrawal = feesPoolSize
-            .div(liquidityToken.totalSupply())
-            .mul(liquidityToken.balanceOf(_msgSender()))
+        uint256 devFundWithdrawal = _feesPoolSize
+            .div(_liquidityToken.totalSupply())
+            .mul(_liquidityToken.balanceOf(_msgSender()))
             .div(100)
-            .mul(uint256(factory.getFeesDevfundAllocation()));
+            .mul(uint256(_factory.getFeesDevfundAllocation()));
 
-        _success = token0.transfer(
+        bool success = _token0.transfer(
             msg.sender,
-            _communityWithdrawal.add(_devFundWithdrawal)
+            communityWithdrawal.add(devFundWithdrawal)
         );
 
-        emit MarketClosed(_communityWithdrawal, _devFundWithdrawal);
+        return (success, communityWithdrawal, devFundWithdrawal);
+
+        emit MarketClosed(communityWithdrawal, devFundWithdrawal);
     }
 
     // Getters
 
-    function getToken0Address()
-        external
-        override
-        view
-        returns (address _token0)
-    {
-        _token0 = address(token0);
+    function getToken0Address() external override view returns (address) {
+        return address(_token0);
     }
 
-    function getToken1Address()
-        external
-        override
-        view
-        returns (address _token1)
-    {
-        _token1 = address(token1);
+    function getToken1Address() external override view returns (address) {
+        return address(_token1);
     }
 
-    function getOptionToken()
-        external
-        override
-        view
-        returns (address _optionToken)
-    {
-        _optionToken = address(optionToken);
+    function getOptionToken() external override view returns (address) {
+        return address(_optionToken);
     }
 
-    function getLiquidityToken()
+    function getLiquidityToken() external override view returns (address) {
+        return address(_liquidityToken);
+    }
+
+    function getLiquidityPoolSize() external override view returns (uint256) {
+        return _liquidityPoolSize;
+    }
+
+    function getPurchasedOptionsValue()
         external
         override
         view
-        returns (address _liquidityToken)
+        returns (uint256)
     {
-        _liquidityToken = address(liquidityToken);
+        return _purchasedOptionsValue;
+    }
+
+    function getRealizedOptionsValue()
+        external
+        override
+        view
+        returns (uint256)
+    {
+        return _realizedOptionsValue;
+    }
+
+    function getFeesPoolSize() external override view returns (uint256) {
+        return _feesPoolSize;
     }
 }

@@ -21,78 +21,87 @@ contract BubbaFinanceFactory is IBubbaFinanceFactory, Ownable {
     uint8 public constant ALLOCATED_DEVFUND_FEE_PERCENTAGE = 15;
     uint8 public constant ALLOCATED_LIQUIDITY_PROVIDERS_FEE_PERCENTAGE = 80;
 
-    Counters.Counter private marketsCounter;
+    Counters.Counter private _marketsCounter;
 
-    mapping(uint256 => Market) public markets;
+    mapping(uint256 => Market) public _markets;
 
-    mapping(address => uint256) devFunds;
-    mapping(address => uint256) communityFunds;
+    mapping(address => uint256) _devFunds;
+    mapping(address => uint256) _communityFunds;
 
     constructor() public Ownable() {}
 
     function openMarket(
-        address _token0,
-        address _token1,
-        uint256 _expirationTimestamp,
-        uint256 _timeToOptionExecution,
-        uint8 _optionFee,
-        address _uniswapMarket,
-        string calldata _marketName,
-        string calldata _marketSymbol
-    ) external onlyOwner returns (uint256 _marketId) {
-        uint256 token1Price = UniswapPriceOracle.getPrice(_uniswapMarket);
-        BubbaFinanceMarket _market = new BubbaFinanceMarket(
-            _token0,
-            _token1,
-            _expirationTimestamp,
-            _timeToOptionExecution,
+        address token0,
+        address token1,
+        uint256 expirationTimestamp,
+        uint256 timeToOptionExecution,
+        uint8 optionFee,
+        address uniswapMarket,
+        string calldata marketName,
+        string calldata marketSymbol
+    ) external onlyOwner returns (uint256 marketId) {
+        uint256 token1Price = UniswapPriceOracle.getPrice(uniswapMarket);
+        BubbaFinanceMarket market = new BubbaFinanceMarket(
+            token0,
+            token1,
+            expirationTimestamp,
+            timeToOptionExecution,
             token1Price,
-            _optionFee,
-            _marketName,
-            _marketSymbol
+            optionFee,
+            marketName,
+            marketSymbol
         );
 
-        _marketId = marketsCounter.current();
+        marketId = _marketsCounter.current();
 
-        markets[_marketId] = Market(address(_market), _expirationTimestamp);
+        _markets[marketId] = Market(address(market), expirationTimestamp);
 
-        emit MarketCreation(_token0, _token1, address(_market), _marketId);
-        marketsCounter.increment();
+        emit MarketCreation(token0, token1, address(market), marketId);
+        _marketsCounter.increment();
     }
 
-    function closeMarket(uint256 _marketId)
+    function closeMarket(uint256 marketId)
         external
         onlyOwner
         returns (
-            bool _success,
-            uint256 _communityWithdrawal,
-            uint256 _devFundWithdrawal
+            bool success,
+            uint256 communityWithdrawal,
+            uint256 devFundWithdrawal
         )
     {
         require(
-            markets[_marketId].market != address(0),
+            _markets[marketId].market != address(0),
             "BubbaFinanceFactory: Non existing market"
         );
 
-        (
-            _success,
-            _communityWithdrawal,
-            _devFundWithdrawal
-        ) = IBubbaFinanceMarket(markets[_marketId].market).closeMarket();
+        (success, communityWithdrawal, devFundWithdrawal) = IBubbaFinanceMarket(
+            _markets[marketId]
+                .market
+        )
+            .closeMarket();
 
-        address marketToken0 = IBubbaFinanceMarket(markets[_marketId].market)
+        address marketToken0 = IBubbaFinanceMarket(_markets[marketId].market)
             .getToken0Address();
 
-        devFunds[marketToken0].add(_devFundWithdrawal);
-        communityFunds[marketToken0].add(_communityWithdrawal);
+        _devFunds[marketToken0].add(devFundWithdrawal);
+        _communityFunds[marketToken0].add(communityWithdrawal);
 
-        emit MarketClosed(_marketId);
+        emit MarketClosed(marketId);
     }
 
     // Getters
 
-    function getMarketsCount() public override view returns (uint256) {
-        return marketsCounter.current();
+    function getMarketsCount() external override view returns (uint256) {
+        return _marketsCounter.current();
+    }
+
+    function getMarket(uint256 id)
+        external
+        override
+        view
+        returns (uint256, address)
+    {
+        return (_markets[id].expirationTimestamp, _markets[id].market);
     }
 
     function getFeesCommunityAllocation()

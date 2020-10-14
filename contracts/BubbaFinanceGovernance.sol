@@ -13,20 +13,20 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
     uint8 constant REQUIRED_SUPPLY_PERCENTAGE_TO_PROPOSE = 10;
     uint8 constant REQUIRED_MAJORITY = 51;
 
-    uint256 activeVotedProposal;
+    uint256 _activeVotedProposal;
 
-    Counters.Counter private proposalsCounter;
-    mapping(uint256 => Proposal) proposals;
+    Counters.Counter private _proposalsCounter;
+    mapping(uint256 => Proposal) _proposals;
 
-    constructor(string memory _name, string memory _symbol)
+    constructor(string memory name, string memory symbol)
         public
-        ERC20(_name, _symbol)
+        ERC20(name, symbol)
     {}
 
     function propose(
-        address _txDestination,
-        uint256 _txValue,
-        bytes calldata _txData
+        address txDestination,
+        uint256 txValue,
+        bytes calldata txData
     ) external {
         require(
             balanceOf(_msgSender()) >=
@@ -39,42 +39,39 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
         Proposal memory proposal;
 
         proposal.proposedBy = _msgSender();
-        proposal.txn = Transaction(_txDestination, _txValue, _txData, false);
+        proposal.txn = Transaction(txDestination, txValue, txData, false);
 
-        proposals[proposalsCounter.current()] = proposal;
+        _proposals[_proposalsCounter.current()] = proposal;
 
-        emit NewProposal(proposalsCounter.current());
-        proposalsCounter.increment();
+        emit NewProposal(_proposalsCounter.current());
+        _proposalsCounter.increment();
     }
 
-    function vote(uint256 _votes) external {
-        (bool votingSuccess, bool execution) = _vote(_msgSender(), _votes);
+    function vote(uint256 votes) external {
+        (bool votingSuccess, bool execution) = _vote(_msgSender(), votes);
         require(votingSuccess, "BubbaFinanceGovernance: voting failed");
     }
 
     // Internals
 
-    function _vote(address _voter, uint256 _votes)
-        internal
-        returns (bool, bool)
-    {
+    function _vote(address voter, uint256 votes) internal returns (bool, bool) {
         if (
-            balanceOf(_voter).sub(
-                proposals[activeVotedProposal].lockedVoters[_voter]
-            ) < _votes
+            balanceOf(voter).sub(
+                _proposals[_activeVotedProposal].lockedVoters[voter]
+            ) < votes
         ) return (false, false);
 
-        proposals[activeVotedProposal].lockedVoters[_voter].add(_votes);
+        _proposals[_activeVotedProposal].lockedVoters[voter].add(votes);
 
-        proposals[activeVotedProposal].votes.add(_votes);
+        _proposals[_activeVotedProposal].votes.add(votes);
 
-        emit Vote(activeVotedProposal, _voter, _votes);
+        emit Vote(_activeVotedProposal, voter, votes);
 
         if (
-            proposals[activeVotedProposal].votes >=
+            _proposals[_activeVotedProposal].votes >=
             totalSupply().div(100).mul(REQUIRED_MAJORITY)
         ) {
-            bool executionResult = executeProposal(activeVotedProposal);
+            bool executionResult = executeProposal(_activeVotedProposal);
             return (true, executionResult);
         }
 
@@ -87,14 +84,15 @@ contract BubbaFinanceGovernance is IBubbaFinanceGovernance, ERC20 {
         uint256 amount
     ) internal override {
         require(
-            amount > proposals[activeVotedProposal].lockedVoters[from] &&
-                block.timestamp < proposals[activeVotedProposal].votingExpires,
+            amount > _proposals[_activeVotedProposal].lockedVoters[from] &&
+                block.timestamp <
+                _proposals[_activeVotedProposal].votingExpires,
             "BubbaFinanceGovernance: Unable to transfer used votes"
         );
     }
 
     function executeProposal(uint256 proposalId) internal returns (bool) {
-        Transaction storage txn = proposals[proposalId].txn;
+        Transaction storage txn = _proposals[proposalId].txn;
         txn.executed = true;
         if (
             external_call(txn.destination, txn.value, txn.data.length, txn.data)

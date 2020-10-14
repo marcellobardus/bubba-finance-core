@@ -17,6 +17,8 @@ interface IBubbaFinanceFactory {
 
     function getMarketsCount() external view returns (uint256);
 
+    function getMarket(uint256 id) external view returns (uint256, address);
+
     // Constants getters
 
     function getFeesCommunityAllocation() external view returns (uint8);

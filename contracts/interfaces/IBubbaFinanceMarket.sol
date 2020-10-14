@@ -21,34 +21,39 @@ interface IBubbaFinanceMarket {
 
     // State changers
 
-    function addLiquidity(uint256 _amount) external;
+    function addLiquidity(uint256 amount) external;
 
-    function withdrawLiquidity(uint256 _amount) external;
+    function withdrawLiquidity(uint256 amount) external;
 
-    function claimInterests(uint256 _value) external;
+    function claimInterests(uint256 value) external;
 
-    function purchaseOption(uint256 _value) external;
+    function purchaseOption(uint256 value) external;
 
-    function realizeOption(uint256 _value) external;
+    function realizeOption(uint256 value) external;
 
     function closeMarket()
         external
         returns (
-            bool _success,
-            uint256 _communityWithdrawal,
-            uint256 _devFundWithdrawal
+            bool,
+            uint256,
+            uint256
         );
 
     // Getters
 
-    function getToken0Address() external view returns (address _token0);
+    function getToken0Address() external view returns (address);
 
-    function getToken1Address() external view returns (address _token1);
+    function getToken1Address() external view returns (address);
 
-    function getLiquidityToken()
-        external
-        view
-        returns (address _liquidityToken);
+    function getLiquidityToken() external view returns (address);
 
-    function getOptionToken() external view returns (address _optionToken);
+    function getOptionToken() external view returns (address);
+
+    function getLiquidityPoolSize() external view returns (uint256);
+
+    function getPurchasedOptionsValue() external view returns (uint256);
+
+    function getRealizedOptionsValue() external view returns (uint256);
+
+    function getFeesPoolSize() external view returns (uint256);
 }
